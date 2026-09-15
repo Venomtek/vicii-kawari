@@ -14,9 +14,11 @@ subdirs:
 	$(MAKE) -C ball
 	$(MAKE) -C hires
 	$(MAKE) -C split
+	$(MAKE) -C racer80
 
 clean:
 	$(MAKE) -C ball clean
 	$(MAKE) -C hires clean
 	$(MAKE) -C split clean
+	$(MAKE) -C racer80 clean
 	rm -f *.d64

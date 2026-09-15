@@ -29,14 +29,15 @@ subdirs:
 	$(MAKE) -C novaterm
 	$(MAKE) -C tests
 	$(MAKE) -C ansii
+	$(MAKE) -C vmem
 
 clean:
 	$(MAKE) -C config clean
 	$(MAKE) -C common clean
-	$(MAKE) -C config clean
 	$(MAKE) -C 80col clean
 	$(MAKE) -C novaterm clean
 	$(MAKE) -C tests clean
 	$(MAKE) -C flash clean
 	$(MAKE) -C ansii clean
+	$(MAKE) -C vmem clean
 	rm -f *.d64
