@@ -2,7 +2,7 @@
 mkdir -p build
 
 MAJ=1
-MIN=19
+MIN=20
 
 # MAINLG-DVI:29MHZ:U
 #    Unscaled output. Irregular resolutions. This is/was the default
@@ -49,6 +49,10 @@ do
    VAR=$VAR-$RES-$OPT
 
    echo "Building $VAR..."
+
+   cp ../../hdl/colors.bin .
+   cp ../../hdl/luma_rev4.bin .
+   cp ../../hdl/sine.bin .
 
    cp vicii_${RES}.peri.xml vicii.peri.xml
    cp vicii_${RES}.sdc vicii.sdc

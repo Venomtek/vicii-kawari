@@ -2,13 +2,17 @@
 mkdir -p build
 
 MAJ=1
-MIN=19
+MIN=20
 
 ALL="MAINLH MAINLH-DOTC-1.2 MAINLH-DOTC-1.5"
 
 for V in $ALL
 do
    echo "Building $V..."
+
+   cp ../../hdl/colors.bin .
+   cp ../../hdl/luma_rev4.bin .
+   cp ../../hdl/sine.bin .
 
    if [ "$1" = "sweep" ]
    then
