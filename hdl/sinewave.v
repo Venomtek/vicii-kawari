@@ -33,11 +33,12 @@ module SINE_WAVES
            output reg [data_width-1:0] dout
        );
 
-`ifdef WITH_64K
-(* ram_style = "distributed" *) reg [data_width-1:0] sine_rom[2**addr_width-1:0];
-`else
+// This is a 4096 x 9 ROM (36.9 Kbit).  A distributed (LUT) implementation of
+// that is enormous on every supported device, so block RAM is always
+// requested.  (Efinity 2021.2 ignores ram_style and infers from the shape of
+// the memory; Xilinx honours it.)  The module is now actually instantiated by
+// comp_sync.v, so this attribute finally matters.
 (* ram_style = "block" *) reg [data_width-1:0] sine_rom[2**addr_width-1:0];
-`endif
 
 initial $readmemb ("sine.bin", sine_rom);
 
