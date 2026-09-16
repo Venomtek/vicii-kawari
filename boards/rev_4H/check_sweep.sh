@@ -1,4 +1,11 @@
 #!/bin/bash
+
+if [[ ! "$(basename "$PWD")" == *run_sweep_* ]]
+then
+echo "Run this inside a run_sweep_#### dir as ../check_sweep.sh"
+exit
+fi
+
 pushd $1
 pwd
 SEEDS=`find . -type d -maxdepth 1`
