@@ -103,7 +103,8 @@ module dvi_linebuf_RAM
        )
        (
            input wire [data_width-1:0] din,
-           input wire [addr_width-1:0] addr,
+           input wire [addr_width-1:0] waddr,
+           input wire [addr_width-1:0] raddr,
            input wire rclk,
            input wire re,
            input wire wclk,
@@ -117,16 +118,23 @@ module dvi_linebuf_RAM
 (* ram_style = "block" *) reg [data_width-1:0] ram_single_port[2**addr_width-1:0];
 `endif
 
+// Write and read addresses are separate ports.  The write port lives entirely
+// in the clk_dot4x domain and the read port entirely in the clk_dvi domain.
+// Sharing one address input forced the tool to build an address mux that
+// crossed the two clock domains, which showed up as a hold violation
+// (h_count -> line_buf_0|WADDR[9], -2.292 ns).  The two ports are never
+// active at the same time (we = active_buf, re = !active_buf), so splitting
+// them is exactly equivalent.
 always @(posedge wclk)
 begin
     if (we)
-        ram_single_port[addr] <= din;
+        ram_single_port[waddr] <= din;
 end
 
 always @(posedge rclk)
 begin
     if (re)
-       dout <= ram_single_port[addr];
+       dout <= ram_single_port[raddr];
 end
 
 endmodule
@@ -288,7 +296,8 @@ ERROR "Can't define HIRES_MODES for HALF DOT CLOCK RES"
 // resolution x) as the address.
 // When the line buffer is being read from, we use h_count.
 dvi_linebuf_RAM line_buf_0(pixel_color3, // din
-                       active_buf ? `BUF_X_COUNTER : (h_count + x_offset),  // addr
+                       `BUF_X_COUNTER, // waddr (clk_dot4x domain)
+                       (h_count + x_offset), // raddr (clk_dvi domain)
                        clk_dvi, // rclk
                        !active_buf, // re
                        clk_dot4x, // wclk
@@ -296,7 +305,8 @@ dvi_linebuf_RAM line_buf_0(pixel_color3, // din
                        dout0); // dout
 
 dvi_linebuf_RAM line_buf_1(pixel_color3,
-                       !active_buf ? `BUF_X_COUNTER : (h_count + x_offset),
+                       `BUF_X_COUNTER,
+                       (h_count + x_offset),
                        clk_dvi,
                        active_buf,
                        clk_dot4x,
