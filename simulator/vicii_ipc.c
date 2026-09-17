@@ -144,6 +144,7 @@ int ipc_receive(struct vicii_ipc* ipc) {
       if (p(ipc, END2_PRODUCER_SIG_END1_CONSUME_OK))
          return 1;
     }
+    return 0;
 }
 
 int ipc_receive_done(struct vicii_ipc* ipc) {
