@@ -4,7 +4,11 @@
 #
 # If prg omitted, all tests run.
 
-VICII_PARENT=/shared/Vivado
+VICII_PARENT=/home/rrossi/src/kawari
+
+cp ../hdl/sine.bin .
+cp ../hdl/colors.bin .
+cp ../hdl/luma_rev4.bin .
 
 input="tests.txt"
 while read -r line
