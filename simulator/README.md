@@ -41,3 +41,17 @@ Usage
    From VICE's monitor: f d3ff,d3ff,1 - to enable sync
 
    vicsim -h  for other options
+
+Verilator
+
+    May have to patch the above hash with verilator.diff for it to build on more recent systems.
+
+    Suggested setup:
+
+    autoconf
+    ./configure --prefix=/home/$USER/tools/verilator
+    make
+
+    cp /home/$USER/tools/verilator/bin/* /home/$USER/tools/verilator/shared/verilator/bin
+    Then PATH=/home/$USER/tools/verilator/shared/verilator/bin:$PATH
+    export VERILATOR_ROOT=/home/$USER/tools/verilator/shared/verilator

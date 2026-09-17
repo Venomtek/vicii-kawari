@@ -1,0 +1,14 @@
+diff --git a/src/verilog.y b/src/verilog.y
+index e2031c2e1..90daae3d7 100644
+--- a/src/verilog.y
++++ b/src/verilog.y
+@@ -233,6 +233,10 @@ static void UNSUPREAL(FileLine* fileline) {
+ class AstSenTree;
+ %}
+ 
++// Bison 3.7 and newer include the generated token header instead of
++// duplicating it in the parser source.  bisonpre renames that header.
++%define api.header.include {"V3ParseBison.h"}
++
+ // When writing Bison patterns we use yTOKEN instead of "token",
+ // so Bison will error out on unknown "token"s.
