@@ -2,7 +2,7 @@
 
 # Edit VER before running
 
-VER=1.19
+VER=1.20
 DEST=../../../disks/util/flash/hex/single/${VER}
 
 

@@ -1,7 +1,7 @@
 # cd into the seed's outflow dir 
 # Run this after making multi.hex using efinity_pgm.sh
 
-VER=1.19
+VER=1.20
 DEST=/shared/Vivado/vicii-kawari/disks/util/flash/hex/single/$VER
 DESTM=/shared/Vivado/vicii-kawari/disks/util/flash/hex/multi/$VER
 VARIANT=LG_RGB-32MHZ-U
