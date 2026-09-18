@@ -47,17 +47,20 @@
 #define NTSC_6567R56A_MAX_DOT_X 511 // 64 cycles per line
 #define NTSC_6567R56A_MAX_DOT_Y 261
 #define NTSC_6567R56A_LAST_XPOS 0x1ff
+#define NTSC_6567R56A_FIRST_XPOS 0x19c
 
 #define NTSC_6567R8_NUM_CYCLES 65
 #define NTSC_6567R8_MAX_DOT_X 519 // 65 cycles per line
 #define NTSC_6567R8_MAX_DOT_Y 262
 #define NTSC_6567R8_LAST_XPOS 0x1ff
+#define NTSC_6567R8_FIRST_XPOS 0x19c
 
 // 63 cycles per line
 #define PAL_6569_NUM_CYCLES 63
 #define PAL_6569_MAX_DOT_X 503
 #define PAL_6569_MAX_DOT_Y 311
 #define PAL_6569_LAST_XPOS 0x1f7
+#define PAL_6569_FIRST_XPOS 0x194
 
 #define VIC_LP 0
 #define VIC_LPI2 1

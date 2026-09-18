@@ -68,6 +68,7 @@ do
 
 	pushd ${VICII_PARENT}/vicii-vice-3.4
         ./src/x64sc -sounddev dummy $standard -VICIImodel $model \
+                -VICIIborders 2 -drive8type 1541 \
 		"${VICII_PARENT}/vicii-kawari/tests/$i" 2> stderr &
 	popd
 	sleep $delay

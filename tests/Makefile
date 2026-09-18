@@ -13,7 +13,6 @@ clean:
 	rm -f MakeReport.class
 	rm -f list.txt
 	rm -f index.html
-	cp ../hdl/sine.bin ../hdl/colors.bin .
 
 clean_results:
 	find . -name 'vice_*.png' -exec rm -f {} \;

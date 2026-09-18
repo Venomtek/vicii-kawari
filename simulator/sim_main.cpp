@@ -52,6 +52,7 @@ static int nextClkCnt;
 static int screenWidth;
 static int screenHeight;
 static int lastXPos;
+static int firstXPos;
 static int numCycles;
 
 // Some utility macros
@@ -800,12 +801,14 @@ int main(int argc, char** argv, char** env) {
              screenWidth = NTSC_6567R56A_MAX_DOT_X+1;
              screenHeight = NTSC_6567R56A_MAX_DOT_Y+1;
              lastXPos = NTSC_6567R56A_LAST_XPOS;
+             firstXPos = NTSC_6567R56A_FIRST_XPOS;
 	     numCycles = NTSC_6567R56A_NUM_CYCLES;
              break;
           case CHIP6567R8:
              screenWidth = NTSC_6567R8_MAX_DOT_X+1;
              screenHeight = NTSC_6567R8_MAX_DOT_Y+1;
              lastXPos = NTSC_6567R8_LAST_XPOS;
+             firstXPos = NTSC_6567R8_FIRST_XPOS;
 	     numCycles = NTSC_6567R8_NUM_CYCLES;
              break;
           default:
@@ -821,6 +824,7 @@ int main(int argc, char** argv, char** env) {
              screenWidth = PAL_6569_MAX_DOT_X+1;
              screenHeight = PAL_6569_MAX_DOT_Y+1;
              lastXPos = PAL_6569_LAST_XPOS;
+             firstXPos = PAL_6569_FIRST_XPOS;
 	     numCycles = PAL_6569_NUM_CYCLES;
              break;
           default:
@@ -964,8 +968,7 @@ int main(int argc, char** argv, char** env) {
     int ticksUntilDone = 0;
     int ticksUntilPhase = 0;
     bool showState = true;
-    bool viceCaptureWaitLine1 = true;
-    bool endCaptureWaitLine1 = true;
+    int viceCapture1stLineCount = 0;
     while (!Verilated::gotFinish()) {
 
         // Are we shadowing from VICE? Wait for sync data, then
@@ -1351,22 +1354,23 @@ int main(int argc, char** argv, char** env) {
               break;
            }
 	   if (viceCapture) {
-              if (viceCaptureWaitLine1) {
-		     if (top->V_XPOS == 0 && top->V_RASTER_LINE == 0) {
-		         viceCaptureWaitLine1 = false;
-		     }
-	      } else if (top->V_XPOS == lastXPos && top->V_RASTER_LINE == screenHeight - 1) {
-               state->flags |= VICII_OP_CAPTURE_ABORT;
-               ipc_receive_done(ipc);
+              if (top->V_XPOS == firstXPos && top->V_RASTER_LINE == 2) {
+               viceCapture1stLineCount++;
+               // Each pixel has 8 ticks, so 2nd time we come here this
+               // count will be 16 and we should stop.
+               if (viceCapture1stLineCount == 16) {
+                  state->flags |= VICII_OP_CAPTURE_ABORT;
+                  ipc_receive_done(ipc);
 
-               SDL_Surface *sshot = SDL_CreateRGBSurface(0, screenWidth*2, screenHeight*2,
+                  SDL_Surface *sshot = SDL_CreateRGBSurface(0, screenWidth*2, screenHeight*2,
                    32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000);
-               SDL_RenderReadPixels(ren, NULL, SDL_PIXELFORMAT_ARGB8888,
+                  SDL_RenderReadPixels(ren, NULL, SDL_PIXELFORMAT_ARGB8888,
                                     sshot->pixels, sshot->pitch);
-               SDL_SaveBMP(sshot, "screenshot.bmp");
-               SDL_FreeSurface(sshot);
-               exit(0);
-	     }
+                  SDL_SaveBMP(sshot, "screenshot.bmp");
+                  SDL_FreeSurface(sshot);
+                  exit(0);
+	        }
+              }
 	   }
 
            ticksUntilDone--;
