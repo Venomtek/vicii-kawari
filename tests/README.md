@@ -1,6 +1,14 @@
 Prerequisites
 
-    sudo apt-get install imagemagick
+    sudo apt-get install imagemagick python3-pil
+
+To compare all matching FPGA and VICE PRG screenshots recursively (allowing up to four pixels of horizontal and vertical displacement):
+
+    ./compare_screenshots.py
+
+An alternate search directory or offset limit can be supplied when needed:
+
+    ./compare_screenshots.py path/to/screenshots --max-offset 1
 
 Make sure the roms are read by VICE correctly. This version
 used to test Kawari expects these:
@@ -17,11 +25,11 @@ To generate a full report
 
     make clean
     ./test_all.sh
-    make
+    make all
     make publish
+    make host
 
 To clean local dir of all results
 
     make clean_results
 
-NOTE: colors.bin and sine.bin must be in this dir for tests script to run

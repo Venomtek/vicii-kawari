@@ -1,8 +1,7 @@
 all: list.txt index.html
 
-index.html: MakeReport.java
-	javac MakeReport.java
-	java MakeReport > index.html
+index.html: report_gen.py
+	python3 report_gen.py > index.html
 
 list.txt:
 	find VICII -name '*.prg' -type f > list.txt
@@ -10,7 +9,6 @@ list.txt:
 	find glitches -name '*.prg' -type f >> list.txt
 
 clean:
-	rm -f MakeReport.class
 	rm -f list.txt
 	rm -f index.html
 
@@ -30,3 +28,6 @@ publish:
 	sudo chown -R root:root  /var/www/html/*
 	sudo chmod -R oug+rw /var/www/html/*
 	sudo find /var/www/html -type d -exec chmod oug+x {} \;
+
+host:
+	@cd /var/www/html; python3 -m http.server
