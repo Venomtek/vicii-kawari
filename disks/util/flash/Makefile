@@ -14,8 +14,7 @@
 # Stuff to potentially edit
 #NAME=kawari
 #VERSION=1.8
-#FPGA=efinix_t20
-#    One of: efinix_t8 | efinix_t20
+#STRIP=yes|no
 #START_ADDRESS
 #    For Efinix   LH: 0=golden, 659456=multiboot
 #    For Efinix   LG: 0=golden, 679936=multiboot
@@ -38,7 +37,7 @@ all: checkfile subdirs ask d64 d81 teensy tools
 ask:
 	@echo -------------------------------------------
 	@echo MAKING: ${VARIANT}
-	@echo FROM: ${SOURCE_IMG}
+	@echo FROM: ${BITFILE}
 	@echo -------------------------------------------
 	@echo -n Press enter to continue, Cntrl-C to abort:
 	#@read dummy
@@ -46,11 +45,9 @@ ask:
 subdirs:
 	$(MAKE) -C third_party
 
-SOURCE_IMG=kawari_$(TYPE)_$(VARIANT)_$(VERSION).bit
-
 checkfile:
-	@if [ ! -f $(SOURCE_IMG) ]; \
-	then echo "Missing $(SOURCE_IMG)"; exit 1; \
+	@if [ ! -f $(BITFILE) ]; \
+	then echo "Missing $(BITFILE)"; exit 1; \
 	fi
 
 # Max 180 files
@@ -152,8 +149,11 @@ run:
 	x64sc flash.prg
 
 clean:
-	rm -rf *.o *.prg *.d64 *.d81 tmp stripped.bit multi_hex_to_bit autoswap.lst
+	rm -rf *.o *.prg *.d64 *.d81 tmp stripped.bit multi_hex_to_bit autoswap.lst checksum load_bytes
 	$(MAKE) -C third_party clean
+
+distclean: clean
+	rm -rf *.zip prep Kawari_TeensyROM*
 
 # For Efinix devices, we have to isolate the one image
 # we want to update from the multi image.
@@ -165,18 +165,20 @@ clean:
 # $6000 dest for every chunk
 image_files: load_bytes checksum
 	mkdir -p tmp
-	if [ "$(FPGA)" = "efinix_t8" -a "$(TYPE)" = "multiboot" ]; then \
-	   dd skip=1 bs=$(IMAGE_SIZE) if=$(SOURCE_IMG) > stripped.bit; \
+	if [ "$(STRIP)" = "yes" -a "$(TYPE)" = "multiboot" ]; then \
+	   dd skip=1 bs=$(IMAGE_SIZE) if=$(BITFILE) > stripped.bit; \
 	fi
-	if [ "$(FPGA)" = "efinix_t20" -a "$(TYPE)" = "multiboot" ]; then \
-	   dd skip=1 bs=$(IMAGE_SIZE) if=$(SOURCE_IMG) > stripped.bit; \
+	if [ "$(STRIP)" = "yes" -a "$(TYPE)" = "golden" ]; then \
+	   dd skip=0 bs=$(IMAGE_SIZE) count=1 if=$(BITFILE) > stripped.bit; \
 	fi
-	if [ "$(FPGA)" = "efinix_t8" -a "$(TYPE)" = "golden" ]; then \
-	   dd skip=0 bs=$(IMAGE_SIZE) count=1 if=$(SOURCE_IMG) > stripped.bit; \
-	fi
-	if [ "$(FPGA)" = "efinix_t20" -a "$(TYPE)" = "golden" ]; then \
-	   dd skip=0 bs=$(IMAGE_SIZE) count=1 if=$(SOURCE_IMG) > stripped.bit; \
-	fi
+
+
+	if [ "$(STRIP)" = "no" ]; then \
+           cp "$(BITFILE)" stripped.bit; \
+           PAD=$$(echo "((($$(stat -c %s stripped.bit)/$(PAGE_SIZE))+1)*$(PAGE_SIZE)-$$(stat -c %s stripped.bit))" | bc); \
+           echo "Padding Required: $$PAD"; \
+           dd if=/dev/zero bs="$$PAD" count=1 | tr '\000' '\377' >> stripped.bit; \
+        fi
 	split -a 3 -d -b $(PAGE_SIZE) stripped.bit tmp/img_
 	for NUM in $(FILENUMS); do \
            if [ -e tmp/img_$$NUM ]; then \

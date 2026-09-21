@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VER=1.19
+VER=1.20
 
 # Golden points to fallback at 0a6000 for LG and 0a1000 for LH builds
 # Active points to nothing 000000
@@ -16,163 +16,101 @@ show_start_bytes()
    echo
 }
 
-ls -l hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-29MHZ-U.hex
-ls -l hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-27MHZ-S.hex
-ls -l hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_RGB-32MHZ-U.hex
-ls -l hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH.hex
-ls -l hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.2.hex
-ls -l hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.5.hex
+make multi_hex_to_bit
 
-echo "=================="
-echo "Check source files"
-echo "=================="
+# Format is:
+# HEXFILE:BOOTS:OCTALOFFSET:SIZE:VARIANT:HUMANLABEL
+#
+#    HEXFILE must be a multi .hex created with efinity programming tool
+#    BOOT multi=.hex was created as active/fallback multi image, else is single build
+#    OCTALOFFSET is the octal offset within the .bit file containing the fallback pointer
+#    SIZE of the .bit file created from .hex
+#    VARIANT variant identifier
+#    HUMANLABEL printed to stdout before each disk is created
+
+ALL="hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-29MHZ-U.hex:multi:2460500:679936:MAINLG-DVI-29MHZ-U:Large-29MHZ_Unscaled \
+  hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-27MHZ-S.hex:multi:2460500:679936:MAINLG-DVI-27MHZ-S:Large-27MHZ_Scaled \
+  hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_RGB-32MHZ-U.multi:yes:2460500:679936:MAINLG-RGB-32MHZ-U:Large-32MHZ_RGB \
+  hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH.hex:multi:2410500:659456:MAINLH:Mini \
+  hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.2.hex:multi:2410500:659456:MAINLH-DOTC-1.2:Mini-DOTC-1.2 \
+  hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.5.hex:multi:2410500:659456:MAINLH-DOTC-1.5:Mini-DOTC-1.5"
+
+# Example of building an active (multiboot) image
+# from a single .hex file generated from a board build.
+# Use this to bypass creating a multi .hex file with
+# the efinity tool.
+#ALL="../../../boards/rev_4H/build/kawari_multiboot_MAINLH_1.20.hex:single:2410500:659456:MAINLH:Mini"
+
+for variant in $ALL
+do
+   IFS=: read -r file boot offset size name header <<< "$variant"
+
+   if [ -f $file ]
+   then
+       echo $file "FOUND"
+   else
+       echo $file "MISSING!"
+   fi
+done
+
+echo "========================================"
+echo "Check source files above and press ENTER"
+echo "========================================"
 read n
 echo
+mkdir -p prep/bit/${VER}
 
-mkdir -p tmp/bit/${VER}
+# Only for the files actually found, perform the task
+for variant in $ALL
+do
+   IFS=: read -r file boot offset size name header <<< "$variant"
 
-./multi_hex_to_bit hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-29MHZ-U.hex tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-29MHZ-U.bit
-./multi_hex_to_bit hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-27MHZ-S.hex tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-27MHZ-S.bit
-./multi_hex_to_bit hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_RGB-32MHZ-U.hex tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LG_RGB-32MHZ-U.bit
-./multi_hex_to_bit hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH.hex tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LH.bit
-./multi_hex_to_bit hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.2.hex tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.2.bit
-./multi_hex_to_bit hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.5.hex tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.5.bit
+   if [ -f $file ]
+   then
+      echo $file
+      BASE=`basename $file .hex`
+      BIT=prep/bit/${VER}/${BASE}.bit
+      ./multi_hex_to_bit $file $BIT
+      if [ $boot = "multi" ]
+      then
+         show_start_bytes $BIT $offset
+      fi
+      strings $BIT | grep Generated > $BIT.txt
+      grep Generated $BIT.txt
 
-show_start_bytes tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-29MHZ-U.bit 2460500
-show_start_bytes tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-27MHZ-S.bit 2460500
-show_start_bytes tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LG_RGB-32MHZ-U.bit 2460500
-show_start_bytes tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LH.bit 2410500
-show_start_bytes tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.2.bit 2410500
-show_start_bytes tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.5.bit 2410500
+   fi
+done
 
-echo
-echo "=================="
-echo "Check start addrs"
-echo "=================="
+echo "====================================="
+echo "Check meta data above and press ENTER"
+echo "====================================="
 read n
 
-strings tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-29MHZ-U.bit | grep Generated > tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-29MHZ-U.txt
-strings tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-27MHZ-S.bit | grep Generated > tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-27MHZ-S.txt
-strings tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LG_RGB-32MHZ-U.bit | grep Generated > tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LG_RGB-32MHZ-U.txt
-strings tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LH.bit | grep Generated > tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LH.txt
-strings tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.2.bit | grep Generated > tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.2.txt
-strings tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.5.bit | grep Generated > tmp/bit/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.5.txt
+echo "Creating disks..."
+for variant in $ALL
+do
+   IFS=: read -r file boot offset size name header <<< "$variant"
 
-pushd tmp/bit/${VER} > /dev/null
-grep Generated *.txt 
-popd > /dev/null
-echo "==========="
-echo "Check dates"
-echo "==========="
-read n
+   if [ -f $file ]
+   then
+      echo $header
 
-echo
-echo "Large - 29MHZ Unscaled"
+      BASE=`basename $file .hex`
+      BIT=prep/bit/${VER}/${BASE}.bit
 
-./efinix_prep.sh hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-29MHZ-U.hex \
-                 multiboot \
-                 MAINLG-DVI-29MHZ-U \
-                 ${VER}
+      if [ $boot = "multi" ]
+      then
+         # .hex was created from efinix programming utility for active/fallback
+         echo "   Multiboot"
+         DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} STRIP=yes START_ADDRESS=$size IMAGE_SIZE=$size TYPE=multiboot VARIANT=$name PAGE_SIZE=4096 NUM_DISKS=5 BITFILE=${BIT} make -f Makefile clean zip
 
-./efinix_prep.sh hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-29MHZ-U.hex \
-                 golden \
-                 MAINLG-DVI-29MHZ-U \
-                 ${VER}
+         echo "   Golden"
+         DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} STRIP=yes START_ADDRESS=0 IMAGE_SIZE=$size TYPE=golden VARIANT=$name PAGE_SIZE=4096 NUM_DISKS=5 BITFILE=${BIT} make -f Makefile clean zip
+      else
+         # .hex was created from single image build, use as active
+         echo "   Multiboot from single"
+         DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} STRIP=no START_ADDRESS=$size IMAGE_SIZE=$size TYPE=multiboot VARIANT=$name PAGE_SIZE=4096 NUM_DISKS=5 BITFILE=${BIT} make -f Makefile clean zip
+      fi
 
-echo "   Multiboot"
-DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} FPGA=efinix_t20 START_ADDRESS=679936 IMAGE_SIZE=679936 TYPE=multiboot VARIANT=MAINLG-DVI-29MHZ-U PAGE_SIZE=4096 NUM_DISKS=5 make -f Makefile clean zip
-
-echo "   Golden"
-DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} FPGA=efinix_t20 START_ADDRESS=0 IMAGE_SIZE=679936 TYPE=golden VARIANT=MAINLG-DVI-29MHZ-U PAGE_SIZE=4096 NUM_DISKS=5 make -f Makefile clean zip
-
-echo "Large - 27MHZ Scaled"
-
-./efinix_prep.sh hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-27MHZ-S.hex \
-                 multiboot \
-                 MAINLG-DVI-27MHZ-S \
-                 ${VER}
-
-./efinix_prep.sh hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_DVI-27MHZ-S.hex \
-                 golden \
-                 MAINLG-DVI-27MHZ-S \
-                 ${VER}
-
-echo "   Multiboot"
-DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} FPGA=efinix_t20 START_ADDRESS=679936 IMAGE_SIZE=679936 TYPE=multiboot VARIANT=MAINLG-DVI-27MHZ-S PAGE_SIZE=4096 NUM_DISKS=5 make -f Makefile clean zip
-
-echo "   Golden"
-DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} FPGA=efinix_t20 START_ADDRESS=0 IMAGE_SIZE=679936 TYPE=golden VARIANT=MAINLG-DVI-27MHZ-S PAGE_SIZE=4096 NUM_DISKS=5 make -f Makefile clean zip
-
-echo "Large - 32MHZ RGB"
-
-./efinix_prep.sh hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_RGB-32MHZ-U.hex \
-                 multiboot \
-                 MAINLG-RGB-32MHZ-U \
-                 ${VER}
-
-./efinix_prep.sh hex/multi/${VER}/kawari_${VER}_${VER}_multi_LG_RGB-32MHZ-U.hex \
-                 golden \
-                 MAINLG-RGB-32MHZ-U \
-                 ${VER}
-
-echo "   Multiboot"
-DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} FPGA=efinix_t20 START_ADDRESS=679936 IMAGE_SIZE=679936 TYPE=multiboot VARIANT=MAINLG-RGB-32MHZ-U PAGE_SIZE=4096 NUM_DISKS=5 make -f Makefile clean zip
-
-echo "   Golden"
-DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} FPGA=efinix_t20 START_ADDRESS=0 IMAGE_SIZE=679936 TYPE=golden VARIANT=MAINLG-RGB-32MHZ-U PAGE_SIZE=4096 NUM_DISKS=5 make -f Makefile clean zip
-
-
-echo "Mini - Baseline"
-
-./efinix_prep.sh hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH.hex \
-                 multiboot \
-                 MAINLH \
-                 ${VER}
-
-./efinix_prep.sh hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH.hex \
-                 golden \
-                 MAINLH \
-                 ${VER}
-
-echo "   Multiboot"
-DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} FPGA=efinix_t20 START_ADDRESS=659456 IMAGE_SIZE=659456 TYPE=multiboot VARIANT=MAINLH PAGE_SIZE=4096 NUM_DISKS=5 make -f Makefile clean zip
-
-echo "   Golden"
-DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} FPGA=efinix_t20 START_ADDRESS=0 IMAGE_SIZE=659456 TYPE=golden VARIANT=MAINLH PAGE_SIZE=4096 NUM_DISKS=5 make -f Makefile clean zip
-
-echo "Mini - DOTC-1.2"
-
-./efinix_prep.sh hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.2.hex \
-                 multiboot \
-                 MAINLH-DOTC-1.2 \
-                 ${VER}
-
-./efinix_prep.sh hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.2.hex \
-                 golden \
-                 MAINLH-DOTC-1.2 \
-                 ${VER}
-
-echo "   Multiboot"
-DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} FPGA=efinix_t20 START_ADDRESS=659456 IMAGE_SIZE=659456 TYPE=multiboot VARIANT=MAINLH-DOTC-1.2 PAGE_SIZE=4096 NUM_DISKS=5 make -f Makefile clean zip
-
-echo "   Golden"
-DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} FPGA=efinix_t20 START_ADDRESS=0 IMAGE_SIZE=659456 TYPE=golden VARIANT=MAINLH-DOTC-1.2 PAGE_SIZE=4096 NUM_DISKS=5 make -f Makefile clean zip
-
-echo "Mini - DOTC-1.5"
-
-./efinix_prep.sh hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.5.hex \
-                 multiboot \
-                 MAINLH-DOTC-1.5 \
-                 ${VER}
-
-./efinix_prep.sh hex/multi/${VER}/kawari_${VER}_${VER}_multi_LH-DOTC-1.5.hex \
-                 golden \
-                 MAINLH-DOTC-1.5 \
-                 ${VER}
-
-echo "   Multiboot"
-DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} FPGA=efinix_t20 START_ADDRESS=659456 IMAGE_SIZE=659456 TYPE=multiboot VARIANT=MAINLH-DOTC-1.5 PAGE_SIZE=4096 NUM_DISKS=5 make -f Makefile clean zip
-
-echo "   Golden"
-DISKNUMS="1 2 3 4 5" NAME=kawari VERSION=${VER} FPGA=efinix_t20 START_ADDRESS=0 IMAGE_SIZE=659456 TYPE=golden VARIANT=MAINLH-DOTC-1.5 PAGE_SIZE=4096 NUM_DISKS=5 make -f Makefile clean zip
-
+   fi
+done
