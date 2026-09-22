@@ -1,14 +1,32 @@
 #!/bin/bash
 
+# Change to no to view output of both VICE and sim
+HIDE_WINDOWS=yes
+
+# Where is the parent dir of vicii-vice-3.4 ?
 VICII_PARENT=/home/rrossi/src/kawari
 
 cp ../hdl/sine.bin .
 cp ../hdl/colors.bin .
 cp ../hdl/luma_rev4.bin .
 
-input="tests.txt"
+if [ "$1" = "" ]
+then
+   input="tests.txt"
+   total=`wc -l < $input`
+else
+   echo "$1 PAL" > /tmp/test.txt
+   input=/tmp/test.txt
+   total=1
+fi
 
-total=`wc -l < tests.txt`
+if [ "$HIDE_WINDOWS" = "yes" ]
+then
+   SDLDRIVER=dummy
+else
+   SDLDRIVER=
+fi
+
 current=0
 while read -r line
 do
@@ -69,7 +87,7 @@ do
 
     echo -n "$i "
     pushd ${VICII_PARENT}/vicii-vice-3.4 > /dev/null
-        SDL_RENDER_DRIVER=software SDL_VIDEODRIVER=dummy \
+        SDL_RENDER_DRIVER=software SDL_VIDEODRIVER=$SDLDRIVER \
             ./src/x64sc -sounddev dummy $standard -VICIImodel $model \
                 -drive8type 1541 \
                 -VICIIborders 2 \
@@ -78,7 +96,7 @@ do
     popd > /dev/null
     sleep $delay
     rm -f screenshot.bmp
-    SDL_RENDER_DRIVER=software SDL_VIDEODRIVER=dummy \
+    SDL_RENDER_DRIVER=software SDL_VIDEODRIVER=$SDLDRIVER \
             ../simulator/obj_dir/Vtop \
                -k -q -w -z -x -c $chip > sim.log 2> /dev/null
     sleep 1

@@ -1,4 +1,9 @@
-all: list.txt index.html
+all: simple list.txt index.html
+
+simple: simple/simple.prg
+
+simple/simple.prg: simple/simple.bas
+	petcat -w2 -o simple/simple.prg -- simple/simple.bas
 
 index.html: report_gen.py
 	python3 report_gen.py > index.html

@@ -24,7 +24,7 @@ folders.
 To generate a full report
 
     make clean
-    ./test_all.sh
+    ./run_tests.sh
     make all
     make publish
     make host
