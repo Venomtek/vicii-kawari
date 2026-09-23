@@ -6,6 +6,11 @@ HIDE_WINDOWS=yes
 # Where is the parent dir of vicii-vice-3.4 ?
 VICII_PARENT=/home/rrossi/src/kawari
 
+# 'comp' or 'rgb' to match simulator output dending on build
+# Remember to change this to match simulator output or else
+# comparisons will fail.
+PALETTE=comp
+
 cp ../hdl/sine.bin .
 cp ../hdl/colors.bin .
 cp ../hdl/luma_rev4.bin .
@@ -43,20 +48,20 @@ do
         model="6567"
         chip="0"
         resolution="520x263"
-        color=kawari-ntsc.vpl
+        color=kawari-ntsc-${PALETTE}.vpl
     elif [ "${stringarray[1]}" == "NTSCOLD" ]
     then
         standard="-ntsc"
         model="6567r56a"
         chip="2"
         resolution="512x262"
-        color=kawari-ntsc.vpl
+        color=kawari-ntsc-${PALETTE}.vpl
     else
         standard="-pal"
         model="6569"
         chip="1"
         resolution="512x312"
-        color=kawari-pal.vpl
+        color=kawari-pal-${PALETTE}.vpl
     fi
 
     delay="6"

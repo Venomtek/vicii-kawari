@@ -435,6 +435,7 @@ begin
 // originally coded for Xilinx or to do it here that seems
 // to work for Efinix Trion. *sigh*
 `ifdef EFINIX
+`ifndef SIMULATOR_BOARD
             // Now delay sprite stuff by 6 pixels so that these
             // signals are valid by dot_rising[2] in the pixel sequencer.
             // This ensures things like priority splits happen when
@@ -469,6 +470,7 @@ begin
             active_sprite5 <= active_sprite4;
             active_sprite6 <= active_sprite5;
             active_sprite_d <= active_sprite6;
+`endif // SIMULATOR_BOARD
 `endif // EFINIX
 
         end
@@ -500,6 +502,51 @@ begin
         end
     end
 end
+
+// Identical logic as above and below for simulator to work
+// as expected. Again, not sure why Efinix behaves different
+// than both xilinx and verilog.
+`ifdef SIMULATOR_BOARD
+always @(posedge clk_dot4x)
+begin
+        if (dot_rising_1) begin
+            // Now delay sprite stuff by 6 pixels so that these
+            // signals are valid by dot_rising[2] in the pixel sequencer.
+            // This ensures things like priority splits happen when
+            // the current pixel is actually overlayed in the gfx
+            // pipeline. Same for mmc splits.
+            for (n = 0; n < `NUM_SPRITES; n = n + 1) begin
+               sprite_cur_pixel2[n] <= sprite_cur_pixel1[n];
+               sprite_cur_pixel3[n] <= sprite_cur_pixel2[n];
+               sprite_cur_pixel4[n] <= sprite_cur_pixel3[n];
+               sprite_cur_pixel5[n] <= sprite_cur_pixel4[n];
+               sprite_cur_pixel6[n] <= sprite_cur_pixel5[n];
+               sprite_cur_pixel[n] <= sprite_cur_pixel6[n];
+            end
+
+            sprite_mmc2 <= sprite_mmc1;
+            sprite_mmc3 <= sprite_mmc2;
+            sprite_mmc4 <= sprite_mmc3;
+            sprite_mmc5 <= sprite_mmc4;
+            sprite_mmc6 <= sprite_mmc5;
+            sprite_mmc_d <= sprite_mmc6;
+
+            sprite_pri2 <= sprite_pri1;
+            sprite_pri3 <= sprite_pri2;
+            sprite_pri4 <= sprite_pri3;
+            sprite_pri5 <= sprite_pri4;
+            sprite_pri6 <= sprite_pri5;
+            sprite_pri_d <= sprite_pri6;
+
+            active_sprite2 <= active_sprite1;
+            active_sprite3 <= active_sprite2;
+            active_sprite4 <= active_sprite3;
+            active_sprite5 <= active_sprite4;
+            active_sprite6 <= active_sprite5;
+            active_sprite_d <= active_sprite6;
+        end
+end
+`endif // SIMULATOR_BOARD
 
 `ifndef EFINIX
 always @(posedge clk_dot4x)
@@ -541,7 +588,7 @@ begin
             active_sprite_d <= active_sprite6;
         end
 end
-`endif
+`endif // !EFINIX
 
 // Sprite to sprite collision logic (m2m)
 // TODO: This makes sprite-sprite collisions happen on the DELAYED
