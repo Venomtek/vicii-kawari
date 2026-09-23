@@ -136,13 +136,11 @@ assign cpu_reset = dot_clock_shift[3];
 assign cpu_reset = rst;
 `endif
 
-`ifdef EFINIX
 `ifdef WITH_DVI
 reg rst_dvi_1;
 reg rst_dvi;
 always @ (posedge clk_dvi) rst_dvi_1 <= rst;
 always @ (posedge clk_dvi) rst_dvi <= rst_dvi_1;
-`endif
 `endif
 
 wire [7:0] dbo;
@@ -167,17 +165,13 @@ vicii vic_inst(
           .sim_chip(sim_chip),
           .standard_sw(standard_sw),
           .clk_dot4x(clk_dot4x),
-`ifdef EFINIX
 `ifdef WITH_DVI
           .clk_dvi(clk_dvi),
           .rst_dvi(rst_dvi),
 `endif
-`endif
           .clk_phi(clk_phi),
           .clk_col16x(clk_col16x),
-`ifdef EFINIX
           .clk_col16x_4tm(clk_col16x),
-`endif
 `ifdef NEED_RGB
           .active(active),
           .hsync(hsync),

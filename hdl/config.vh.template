@@ -5,12 +5,7 @@
 `define VERSION_MINOR 8'd8
 
 // SIMULATOR_BOARD - For the verilator simulator only
-// REV_3_BOARD     - Beta board sent to 11 person beta test group. This
-//                   board did not have luma sink capabilities so this flag
-//                   is necessary to exclude that signal in some modules.
-
 //`define SIMULATOR_BOARD 1
-//`define REV_3_BOARD 1
 
 // If a board has no oscillators and hence no clock multiplexer,
 // this define is necessary for the top.ucf file to be generated

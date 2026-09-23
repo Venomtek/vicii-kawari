@@ -180,14 +180,7 @@
 #define V_REG11_DELAYED top__DOT__vic_inst__DOT__reg11_delayed
 #define V_LIGHTPEN_TRIGGERED top__DOT__vic_inst__DOT__vic_lightpen__DOT__light_pen_triggered
 #define V_LUMA_SINK luma_sink
-
-// Source of rgb sync comes from different modules depending on FPGA
-#ifdef EFINIX
 #define HSYNC top__DOT__vic_inst__DOT__vic_dvi_sync__DOT__hsync_ah
 #define VSYNC top__DOT__vic_inst__DOT__vic_dvi_sync__DOT__vsync_ah
 #define ACTIVE top__DOT__active
-#else
-#define HSYNC top__DOT__vic_inst__DOT__vic_vga_sync__DOT__hsync_ah
-#define VSYNC top__DOT__vic_inst__DOT__vic_vga_sync__DOT__vsync_ah
-#define ACTIVE top__DOT__active
-#endif
+

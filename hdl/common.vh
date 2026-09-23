@@ -33,14 +33,9 @@
 `define BIT_EXT_64K        1'b0,
 `define BIT_EXT2_64K       matrix_base[0],
 `define BIT_EXT3_64K       matrix_base[1:0],
-`ifdef EFINIX
 // Efinix always has 4k page size
 `define FLASH_PAGE_RANGE   3:0
 `define FLASH_PAGE_RESET   4'b0
-`else
-`define FLASH_PAGE_RANGE   5:0
-`define FLASH_PAGE_RESET   6'b0
-`endif // EFINIX
 `else
 `ifdef WITH_4K
 `define VIDEO_RAM_WIDTH    12
@@ -62,14 +57,9 @@
 `define BIT_EXT_64K
 `define BIT_EXT2_64K
 `define BIT_EXT3_64K       matrix_base[0],
-`ifdef EFINIX
 // Efinix always has 4k page size
 `define FLASH_PAGE_RANGE   3:0
 `define FLASH_PAGE_RESET   4'b0
-`else
-`define FLASH_PAGE_RANGE   5:0
-`define FLASH_PAGE_RESET   6'b0
-`endif // EFINIX
 `endif
 
 `endif

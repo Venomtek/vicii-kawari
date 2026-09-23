@@ -53,21 +53,15 @@ module vicii
            input standard_sw,
            output rst,
            input clk_dot4x,
-`ifdef EFINIX
 `ifdef WITH_DVI
            input clk_dvi,
            input rst_dvi,
 `endif
-`endif
            output clk_phi,
            input clk_col16x,
-`ifdef EFINIX
            input clk_col16x_4tm,
-`endif
 `ifdef GEN_LUMA_CHROMA
-`ifndef REV_3_BOARD
            output luma_sink,
-`endif
            output [5:0] luma,
            output [5:0] chroma,
            output ntsc_50,
@@ -839,9 +833,7 @@ wire [15:0] dma_addr;
 `endif
 
 // ras signal driven only by dot4x for registers module
-`ifdef EFINIX
 wire ras_registers;
-`endif
 
 // Address generation
 addressgen vic_addressgen(
@@ -849,9 +841,7 @@ addressgen vic_addressgen(
                .chip(chip),
                .cycle_type(cycle_type),
                .clk_dot4x(clk_dot4x),
-`ifdef EFINIX
                .clk_col16x(clk_col16x_4tm),
-`endif
                .cb(cb),
 `ifdef WITH_RAM
                .dma_done(dma_done),
@@ -861,9 +851,7 @@ addressgen vic_addressgen(
                .vm(vm),
                .rc(rc),
                .ras(ras),
-`ifdef EFINIX
                .ras_registers(ras_registers),
-`endif
                .cas(cas),
                .bmm_old(bmm_delayed),
                .bmm_now(bmm),
@@ -951,12 +939,8 @@ registers vic_registers(
 `endif
               .standard_sw(standard_sw),
               .clk_dot4x(clk_dot4x),
-`ifdef EFINIX
 `ifdef WITH_DVI
               .clk_dvi(clk_dvi),
-`else
-              .clk_dvi(clk_dot4x),
-`endif
 `else
               .clk_dvi(clk_dot4x),
 `endif
@@ -965,11 +949,7 @@ registers vic_registers(
               .ce(ce),
               .rw(rw),
               .aec(aec),
-`ifdef EFINIX
               .ras(ras_registers),
-`else
-              .ras(ras),
-`endif
               .adi(adi),
               .dbi(dbi[7:0]),
               .raster_line(raster_line_d), // advertise the delayed version
@@ -1311,9 +1291,7 @@ comp_sync vic_comp_sync(
               .white_line(white_line),
               .ntsc_50(ntsc_50),
               //.pal_60(pal_60),
-`ifndef REV_3_BOARD
               .luma_sink(luma_sink),
-`endif
               .luma_out(luma),
               .chroma_out(chroma),
               .lumareg_o(lumareg_o),
@@ -1335,10 +1313,13 @@ comp_sync vic_comp_sync(
 
 // For Efinix boards, the timing for analog RGB and DVI are different
 // so we use a different sync/pixel generator.  NOTE:  ANALOG_RGB_TIMING
-// must NOT be enabled for EFINIX, otherwise the ntsc timing will be
+// must NOT be enabled for efinix, otherwise the ntsc timing will be
 // unusable.
-`ifdef EFINIX
 `ifdef WITH_DVI
+`ifndef HIRES_MODES
+// Our DVI requires HIRES_MODES, see hires_dvi_sync*.v
+`error "Invalid config. Can't have DVI without HIRES_MODES."
+`endif
 `define HAVE_SYNC_MODULE 1
 hires_dvi_sync vic_dvi_sync(
                    .rst(rst),
@@ -1375,13 +1356,9 @@ hires_dvi_sync vic_dvi_sync(
                    .half_bright(half_bright)
                );
 `endif // WITH_DVI
-`endif // EFINIX
 
-// For Spartan6, we can share the same sync/pixel generator and
-// both analog RGB and DVI can be active at the same time.
-// ANALOG_RGB_TIMING should be enabled to avoid bad ntsc output
-// on some monitors. If we get here for EFINIX builds, then
-// we do not have DVI enabled.
+// If we don't have a sync module yet from the config,
+// fallback to vga. 
 `ifndef HAVE_SYNC_MODULE
 hires_vga_sync vic_vga_sync(
                    .rst(rst),

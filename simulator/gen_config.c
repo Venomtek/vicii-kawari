@@ -21,8 +21,6 @@
 #define FOR_CONFIG 0
 #define FOR_COMPILE 1
 
-int is_efinix = 0;
-
 struct _Define {
    int id;
    int defined_for_config;
@@ -54,7 +52,6 @@ enum DefineValues {
    WITH_4K,              // select 4K for ram
    WITH_BLITTER,         // include blitter
    LUMACODE,        // include lumacode
-   EFINIX,
 };
 
 Define defines[] = {
@@ -79,7 +76,6 @@ Define defines[] = {
   {WITH_4K ,0,0,"WITH_4K"},
   {WITH_BLITTER ,0,0,"WITH_BLITTER"},
   {LUMACODE ,0,0,"LUMACODE"},
-  {EFINIX ,0,0,"EFINIX"},
 };
 
 void printcfg(int d, int def) {
@@ -109,7 +105,7 @@ void have_eeprom(int d) { printcfg(d, HAVE_EEPROM);with_spi(d); }
 void have_flash(int d) { printcfg(d, HAVE_FLASH);with_spi(d); with_ram(d); }
 void need_rgb(int d) { printcfg(d, NEED_RGB); }
 void gen_rgb(int d) { printcfg(d, GEN_RGB); need_rgb(d); }
-void with_dvi(int d) { printcfg(d, WITH_DVI);need_rgb(d); }
+void with_dvi(int d) { printcfg(d, WITH_DVI);need_rgb(d); hires_modes(d);}
 void hires_modes(int d) { printcfg(d, HIRES_MODES);with_ext(d); with_ram(d); }
 void hide_sync(int d) { printcfg(d, HIDE_SYNC); }
 void with_64k(int d) { printcfg(d, WITH_64K);  with_ram(d), with_ext(d); }
@@ -119,7 +115,6 @@ void with_math(int d) { printcfg(d, WITH_MATH); with_ext(d); }
 // TODO: Fix this and also math reg requirement.
 void with_blitter(int d) { printcfg(d, WITH_BLITTER); hires_modes(d); with_64k(d); with_math(d);}
 void lumacode(int d) { printcfg(d, LUMACODE); }
-void efinix(int d) { printcfg(d, EFINIX); is_efinix = 1;}
 
 int main(int argc, char* argv[]) {
 
@@ -171,10 +166,8 @@ int main(int argc, char* argv[]) {
 		    luma_sink(d);
 		    break;
 
-            // TEST SUITE CONFIG
+            // with DVI (twin displays due to line doubler)
 	    case 1:
-		    // Use this config for generating test results
-		    // since it hides sync lines.
 		    gen_luma_chroma(d);
 		    luma_sink(d);
 		    have_flash(d);
@@ -184,23 +177,20 @@ int main(int argc, char* argv[]) {
 		    hide_sync(d);
 		    break;
 
-            // EFINIX with RGB
+            // with RGB
 	    case 2:
-                    efinix(d);
 		    gen_luma_chroma(d);
 		    luma_sink(d);
 		    gen_rgb(d);
 		    hires_modes(d);
 		    break;
 
-            // EFINIX with DVI
+            // no DVI
 	    case 3:
                     lumacode(d);
-                    efinix(d);
 		    gen_luma_chroma(d);
 		    configurable_lumas(d);
 		    luma_sink(d);
-		    //with_dvi(d);
 		    hires_modes(d);
 		    break;
 
@@ -248,19 +238,11 @@ int main(int argc, char* argv[]) {
                     with_blitter(d);
                     with_math(d);
                     with_dvi(d);
-                    efinix(d);
 		    break;
 
 	    default:
 		    break;
 
-    }
-
-    // Can't think of a batter way to do this.
-    if (is_efinix) {
-        system("cp ../hdl/addressgen_efinix.v ../hdl/addressgen.v");
-    } else {
-        system("cp ../hdl/addressgen_spartan.v ../hdl/addressgen.v");
     }
 
     return 0;

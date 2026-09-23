@@ -284,7 +284,6 @@ static void CHECK(Vtop *top, int cond, int line) {
 // (13/16 for NTSC and 15/16 for PAL) and chop off some of the border area.
 // For spartan, the full resolution is used so clk_dot4x = clk_dvi.
 
-#ifdef EFINIX
 #ifdef WITH_DVI
 static long tc = 0;
 
@@ -314,8 +313,7 @@ static int tick_scale_ntsc[] = {1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0};
 static int tick_scale_ntsc[] = {1,1,1,0,1,1,1,1,0,1,1,1,0,1,1,1};
 #endif
 
-#endif
-#endif
+#endif // WITH_DVI
 
 double col16xtick = 0;
 
@@ -326,7 +324,6 @@ static vluint64_t nextTick(Vtop* top, VerilatedVcdC* tfp, int chip) {
 
    top->V_DOT4X = ~top->V_DOT4X;
    
-#ifdef EFINIX
 #ifdef WITH_DVI
    // Emulate our dvi clock in the correct fraction of the dot4x clock
    if (chip & 1) {
@@ -339,7 +336,6 @@ static vluint64_t nextTick(Vtop* top, VerilatedVcdC* tfp, int chip) {
 
    tc++;
    if (tc>=16) tc=0;
-#endif
 #endif
 
    top->V_COL4X = ~top->V_COL4X;
@@ -941,13 +937,8 @@ int main(int argc, char** argv, char** env) {
     // eeprom. Otherwise, just force it here.
 #ifndef HAVE_EEPROM
 
-#ifdef EFINIX
     // Efinix DVI doesn't support native y
     top->top__DOT__vic_inst__DOT__is_native_y = 0;
-#else
-    top->top__DOT__vic_inst__DOT__is_native_y = 1;
-#endif
-
     top->top__DOT__vic_inst__DOT__is_native_x = 0;
 #endif
 #else

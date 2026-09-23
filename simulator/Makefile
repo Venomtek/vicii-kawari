@@ -12,9 +12,9 @@
 #
 
 # 0 = LUMA CHROMA Minimal Config
-# 1 = Test suite config for ../tests
+# 1 = With DVI (twin displays due to line doubler)
 # 2 = Efinix RGB
-# 3 = Efinix DVI (PAL_RES takes effect, results in twin disp - no native x)
+# 3 = No DVI
 # 4 = Test Pattern (No video options)
 # 5 = Just DVI
 # 6 = No luma chroma

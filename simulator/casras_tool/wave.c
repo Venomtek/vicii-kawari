@@ -385,7 +385,7 @@ int main(int argc, char *argv[])
 
       // For CAS/RAS, we combine several signals:
 
-      // See addressgen_efinix.v
+      // See addressgen.v
       // assign cas = chip[0] ? (pal_cas_d4x_p | pal_cas_d4x_n | pal_cas_c16x_p) : (ntsc_cas_d4x_p | ntsc_cas_d4x_n | ntsc_cas_c16x_p);
       // assign ras = chip[0] ? (pal_ras_d4x | pal_ras_c16x_n) : (ntsc_ras_d4x | ntsc_ras_c16x_n);
       cas_wave[i] = cas_wave_dc_p[i] | cas_wave_dc_n[i] | cas_wave_cc_p[i];

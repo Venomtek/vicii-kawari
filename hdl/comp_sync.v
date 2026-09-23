@@ -26,9 +26,7 @@
 // sink most current during h/v sync periods. Rev 3 board
 // couldn't do this and the sync period was too 'hot' but
 // still worked on most monitors.
-`ifndef REV_3_BOARD
 `define HAVE_LUMA_SINK 1
-`endif
 
 // A module that produces a luma/chroma signals.
 module comp_sync(
@@ -177,11 +175,7 @@ SerrationPulse usep1
 `ifdef CONFIGURABLE_LUMAS
 `define BLANKING_LEVEL blanking_level
 `else
-`ifdef REV_3_BOARD
-`define BLANKING_LEVEL 6'd12
-`else
 `define BLANKING_LEVEL (chip[0] ? 6'h08 : 6'h18)
-`endif
 `endif
 
 always @(posedge clk_dot4x)
