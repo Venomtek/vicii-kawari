@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Change to no to view output of both VICE and sim
-HIDE_WINDOWS=no
+HIDE_WINDOWS=yes
 
 # Where is the parent dir of vicii-vice-3.4 ?
 VICII_PARENT=/home/rrossi/src/kawari

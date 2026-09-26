@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/sem.h>
+#include <stdint.h>
 
 #ifndef __APPLE__
 union semun {
@@ -116,6 +117,9 @@ struct vicii_state {
   // Used to adjust our address on bmm transition glitch
   int vice_vbank_phi1;
   int vice_vbank_phi2;
+
+  uint8_t dbuf[65*8]; // must match dbuf[VICII_DRAW_BUFFER_SIZE]
+  uint8_t dbuf_offset;
 };
 
 #define END1_PRODUCER_SIG_END2_CONSUME_OK 0

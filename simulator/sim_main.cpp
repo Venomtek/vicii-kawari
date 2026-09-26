@@ -29,6 +29,14 @@
 #include "Vtop.h"
 #include "constants.h"
 
+// This is how many pixels we skip due to our starting position
+// in the cycle. For (ahem) reasons, it is difficult to start
+// the simulation on cycle 0.  The VICE hooks sync on cycle 2
+// and 23 pixels into the first raster line.  This is how many
+// pixels we have to 'repair' from the missed info from VICE
+// by using the pixel buffer (dbuf).
+#define NUM_SKIPPED_PIXELS_AFTER_SYNC 23
+
 #if VM_TRACE
 #include <verilated_vcd_c.h>
 #endif
@@ -54,6 +62,7 @@ static int screenHeight;
 static int lastXPos;
 static int firstXPos;
 static int numCycles;
+static int viceCaptureCycleCount;
 
 // Some utility macros
 // Use RISING/FALLING in combination with HASCHANGED
@@ -364,9 +373,34 @@ static vluint64_t nextTick(Vtop* top, VerilatedVcdC* tfp, int chip) {
    return ticks + diff1;
 }
 
-static void drawPixel(SDL_Renderer* ren, int x,int y) {
+int adjustRasterLine(int chip, int rl)
+{
+   // This shifts everything up for NTSC so we can see
+   // the whole screen like on a monitor.  The value 25
+   // here should be close to the vstart values for the chips.
+   switch (chip) {
+      case CHIP6567R8:
+         rl-= 25;
+         if (rl < 0) rl+=263;
+         break;
+      case CHIP6567R56A:
+         rl-= 25;
+         if (rl < 0) rl+=262;
+         break;
+      case CHIP6569R1:
+         default:
+         break;
+   }
+   return rl;
+}
+static void drawTallPixel(SDL_Renderer* ren, int x,int y) {
    SDL_RenderDrawPoint(ren, x,y*2);
    SDL_RenderDrawPoint(ren, x,y*2+1);
+}
+
+static void drawSimulatedPixel(SDL_Renderer* ren, int x, int y)
+{
+    drawTallPixel(ren, x, y);
 }
 
 // Initial sync
@@ -595,6 +629,116 @@ static void regs_fpga_to_vice(Vtop* top, struct vicii_state* state) {
        }
 }
 
+void setRenderColor(SDL_Renderer* ren, Vtop* top, bool hideSync, bool showActive) {
+#ifdef GEN_RGB
+            // Show h/v sync in red
+            if (!hideSync && (!top->hsync || !top->vsync))
+             SDL_SetRenderDrawColor(ren,
+                0b11111111,
+                0b0,
+                0b0,
+                255);
+            else {
+             double rr = top->red * 255.0/63.0;
+             double gg = top->green * 255.0/63.0;
+             double bb = top->blue * 255.0/63.0;
+             SDL_SetRenderDrawColor(ren, rr, gg, bb, 255);
+            }
+
+            // PURPLE ACTIVE AREA - DEBUGGING
+            if (showActive && (top->active))
+             SDL_SetRenderDrawColor(ren,
+                0b11111111,
+                0b0,
+                255,
+                0b0);
+#else
+#ifdef NEED_RGB
+            // Show h/v sync in red
+            if (!hideSync && (top->HSYNC || top->VSYNC))
+             SDL_SetRenderDrawColor(ren,
+                0b11111111,
+                0b0,
+                0b0,
+                255);
+            else {
+             double rr = top->top__DOT__red * 255.0/63.0;
+             double gg = top->top__DOT__green * 255.0/63.0;
+             double bb = top->top__DOT__blue * 255.0/63.0;
+             SDL_SetRenderDrawColor(ren, rr,gg,bb,255);
+            }
+
+            // PURPLE ACTIVE AREA - DEBUGGING
+            if (showActive && (top->ACTIVE))
+             SDL_SetRenderDrawColor(ren,
+                0b11111111,
+                0b0,
+                255,
+                0b0);
+
+#else
+#ifdef GEN_LUMA_CHROMA
+            // Fallback to native pixel sequencer's pixel3 value
+	    // and lookup colors.
+            int hss = 10; // see comp_sync.v  top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__hsync_start;
+            int hse = top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__hsync_end;
+            int vss = top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__vblank_start;
+            //int vse = top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__vblank_end;
+            int vve = top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__vvisible_end;
+            int vvs = top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__vvisible_start;
+	    // This is the same condition in comp_sync.v
+            int vsync = (top->V_RASTER_LINE >= vve && top->V_RASTER_LINE <= vvs);
+            // If we're not in vsync or within native active range, show pixel colors
+	    if ((!vsync && top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__native_active) || hideSync) {
+#ifdef LUMACODE
+             if (top->top__DOT__vic_inst__DOT__lumacode) {
+	       int lp1 = top->top__DOT__vic_inst__DOT__lumacode_p1;
+	       int lp2 = top->top__DOT__vic_inst__DOT__lumacode_p2;
+	       int lcff = top->top__DOT__vic_inst__DOT__vic_registers__DOT__lumacode_ff;
+               if (lcff == 0 || lcff ==1 )
+               SDL_SetRenderDrawColor(ren,
+                ((lp1*16) << 2) | 0b11,
+                ((lp1*16) << 2) | 0b11,
+                ((lp1*16) << 2) | 0b11,
+                255);
+               else {
+               SDL_SetRenderDrawColor(ren,
+                ((lp2*16) << 2) | 0b11,
+                ((lp2*16) << 2) | 0b11,
+                ((lp2*16) << 2) | 0b11,
+                255);
+               }
+             } else {
+#endif
+	       int index = top->top__DOT__vic_inst__DOT__pixel_color3;
+               SDL_SetRenderDrawColor(ren,
+                (native_rgb[index*3] << 2) | 0b11,
+                (native_rgb[index*3+1] << 2) | 0b11,
+                (native_rgb[index*3+2] << 2) | 0b11,
+                255);
+#ifdef LUMACODE
+             }
+#endif
+	    } else {
+               // NOTE: If we're in vsync show red color, except we omit vve and vss to match what comp_sync.v does
+               // (special cases)
+	       if ((top->V_RASTER_X >= hss && top->V_RASTER_X < hse) ||
+                      (vsync && top->V_RASTER_LINE != vve && top->V_RASTER_LINE != vvs))
+#ifdef HAVE_LUMA_SINK
+                  SDL_SetRenderDrawColor(ren, 255*top->V_LUMA_SINK,0,0,255);
+#else
+                  // Only for old beta boards
+                  SDL_SetRenderDrawColor(ren, 255,0,0,255);
+#endif
+	       else
+                  SDL_SetRenderDrawColor(ren, 0,0,0,255);
+	    }
+#else
+#warning "There are no video output options available. Simulator will show nothing"
+#endif
+#endif
+#endif
+}
 
 int main(int argc, char** argv, char** env) {
     SDL_Event event;
@@ -831,6 +975,9 @@ int main(int argc, char** argv, char** env) {
 
     nextClk = half4XDotPS;
 
+    // Capture exactly the number of cycles for one frame minus the first 20 pixels
+    viceCaptureCycleCount = (screenWidth * screenHeight * 8) - 160;
+
     if (showWindow) {
       SDL_DisplayMode current;
 
@@ -958,6 +1105,7 @@ int main(int argc, char** argv, char** env) {
     // and ipc_receive_done inside this loop.
     int ticksUntilDone = 0;
     int ticksUntilPhase = 0;
+    int ticksUntilRenderFix = 0;
     bool showState = true;
     int viceCapture1stLineCount = 0;
     while (!Verilated::gotFinish()) {
@@ -1020,21 +1168,28 @@ int main(int argc, char** argv, char** env) {
 
 	       regs_vice_to_fpga(top, state);
 
+
                // Our next tick will bring us high so we should be low right now.
                CHECK(top, ~top->clk_phi, __LINE__);
 
-               LOG(LOG_INFO, "synced FPGA to cycle=%u, raster_line=%u, xpos=%03x, bmm=%d, mcm=%d, ecm=%d",
-                  state->cycle_num, state->raster_line, state->xpos, top->V_BMM, top->V_MCM, top->V_ECM);
+               LOG(LOG_INFO,
+                  "synced FPGA to cycle=%u, raster_line=%u, xpos=%03x, bmm=%d, mcm=%d, ecm=%d",
+                     state->cycle_num, state->raster_line, state->xpos, top->V_BMM,
+                        top->V_MCM, top->V_ECM);
 
-	      // Respond to IPC immediately after 1 more tick. This will land us 4 ticks into the
-	      // high phase which is where VICE ipc hook expects us to be.
+	      // Respond to IPC immediately after 1 more tick. This will land us 4 ticks
+              // into the high phase which is where VICE ipc hook expects us to be.
               ticksUntilDone = 1;
               ticksUntilPhase = 1;
 	      last_phase = 0;
+              // Proceed for this many pixels to allow VICE to actually render them
+              // into the pixel buffer.
+              ticksUntilRenderFix = NUM_SKIPPED_PIXELS_AFTER_SYNC * 8;
            } else {
               ticksUntilDone = 4;
 	   }
         }
+
 
         if (shadowVic) {
            // Simulate cs and rw going back high. This is the same
@@ -1112,152 +1267,15 @@ int main(int argc, char** argv, char** env) {
 	  // dot_rising[1] || dot_rising[3]
           if (showWindow && HASCHANGED(OUT_DOT_RISING) &&
 			  (top->V_CLK_DOT == 2 || top->V_CLK_DOT == 8)) {
-#ifdef GEN_RGB
-            // Show h/v sync in red
-            if (!hideSync && (!top->hsync || !top->vsync))
-             SDL_SetRenderDrawColor(ren,
-                0b11111111,
-                0b0,
-                0b0,
-                255);
-            else {
-             double rr = top->red * 255.0/63.0;
-             double gg = top->green * 255.0/63.0;
-             double bb = top->blue * 255.0/63.0;
-             SDL_SetRenderDrawColor(ren, rr, gg, bb, 255);
-            }
+             setRenderColor(ren, top, hideSync, showActive);
 
-            // PURPLE ACTIVE AREA - DEBUGGING
-            if (showActive && (top->active))
-             SDL_SetRenderDrawColor(ren,
-                0b11111111,
-                0b0,
-                255,
-                0b0);
-#else 
-#ifdef NEED_RGB
-            // Show h/v sync in red
-            if (!hideSync && (top->HSYNC || top->VSYNC))
-             SDL_SetRenderDrawColor(ren,
-                0b11111111,
-                0b0,
-                0b0,
-                255);
-            else {
-             double rr = top->top__DOT__red * 255.0/63.0;
-             double gg = top->top__DOT__green * 255.0/63.0;
-             double bb = top->top__DOT__blue * 255.0/63.0;
-             SDL_SetRenderDrawColor(ren, rr,gg,bb,255);
-            }
-
-            // PURPLE ACTIVE AREA - DEBUGGING
-            if (showActive && (top->ACTIVE))
-             SDL_SetRenderDrawColor(ren,
-                0b11111111,
-                0b0,
-                255,
-                0b0);
-
-#else
-#ifdef GEN_LUMA_CHROMA
-            // Fallback to native pixel sequencer's pixel3 value
-	    // and lookup colors.
-            int hss = 10; // see comp_sync.v  top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__hsync_start;
-            int hse = top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__hsync_end;
-            int vss = top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__vblank_start;
-            //int vse = top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__vblank_end;
-            int vve = top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__vvisible_end;
-            int vvs = top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__vvisible_start;
-	    // This is the same condition in comp_sync.v
-            int vsync = (top->V_RASTER_LINE >= vve && top->V_RASTER_LINE <= vvs);
-            // If we're not in vsync or within native active range, show pixel colors
-	    if ((!vsync && top->top__DOT__vic_inst__DOT__vic_comp_sync__DOT__native_active) || hideSync) {
-#ifdef LUMACODE
-             if (top->top__DOT__vic_inst__DOT__lumacode) {
-	       int lp1 = top->top__DOT__vic_inst__DOT__lumacode_p1;
-	       int lp2 = top->top__DOT__vic_inst__DOT__lumacode_p2;
-	       int lcff = top->top__DOT__vic_inst__DOT__vic_registers__DOT__lumacode_ff;
-               if (lcff == 0 || lcff ==1 )
-               SDL_SetRenderDrawColor(ren,
-                ((lp1*16) << 2) | 0b11,
-                ((lp1*16) << 2) | 0b11,
-                ((lp1*16) << 2) | 0b11,
-                255);
-               else {
-               SDL_SetRenderDrawColor(ren,
-                ((lp2*16) << 2) | 0b11,
-                ((lp2*16) << 2) | 0b11,
-                ((lp2*16) << 2) | 0b11,
-                255);
-               }
-             } else {
-#endif
-	       int index = top->top__DOT__vic_inst__DOT__pixel_color3;
-               SDL_SetRenderDrawColor(ren,
-                (native_rgb[index*3] << 2) | 0b11,
-                (native_rgb[index*3+1] << 2) | 0b11,
-                (native_rgb[index*3+2] << 2) | 0b11,
-                255);
-#ifdef LUMACODE
-             }
-#endif
-	    } else {
-               // NOTE: If we're in vsync show red color, except we omit vve and vss to match what comp_sync.v does
-               // (special cases)
-	       if ((top->V_RASTER_X >= hss && top->V_RASTER_X < hse) ||
-                      (vsync && top->V_RASTER_LINE != vve && top->V_RASTER_LINE != vvs))
-#ifdef HAVE_LUMA_SINK
-                  SDL_SetRenderDrawColor(ren, 255*top->V_LUMA_SINK,0,0,255);
-#else
-                  // Only for old beta boards
-                  SDL_SetRenderDrawColor(ren, 255,0,0,255);
-#endif
-	       else
-                  SDL_SetRenderDrawColor(ren, 0,0,0,255);
-	    }
-#else
-#warning "There are no video output options available. Simulator will show nothing"
-#endif
-#endif
-#endif
              // top->V_CLK_DOT is 2 or 8
 	     int hoffset = top->V_CLK_DOT == 2 ? 0 : 1;
 
              int rl = top->V_RASTER_LINE;
+             rl = adjustRasterLine(chip,rl);
 
-             // This shifts everything up for NTSC so we can see
-             // the whole screen like on a monitor.  The value 25
-             // here should be close to the vstart values for the chips.
-             switch (chip) {
-                case CHIP6567R8:
-                   rl-= 25;
-                   if (rl < 0) rl+=263;
-                   break;
-                case CHIP6567R56A:
-                   rl-= 25;
-                   if (rl < 0) rl+=262;
-                   break;
-                case CHIP6569R1:
-                default:
-                   break;
-             }
-
-             if (1) { //top->top__DOT__vic_inst__DOT__is_native_y) {
-               drawPixel(ren,
-                  top->V_RASTER_X*2+hoffset,
-                  rl
-               );
-             } else {
-               // Draw fatter pixels for double y
-               drawPixel(ren,
-                  top->V_RASTER_X*4+hoffset*2,
-                  rl
-               );
-               drawPixel(ren,
-                  top->V_RASTER_X*4+1+hoffset*2,
-                  rl
-               );
-             }
+             drawSimulatedPixel(ren, top->V_RASTER_X*2+hoffset, rl);
 
              // Show updated pixels per raster line
              if (prevY != rl) {
@@ -1266,7 +1284,7 @@ int main(int argc, char** argv, char** env) {
                 if (scanline) {
                    for (int xx=0; xx < 504; xx++) {
                      SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
-                     drawPixel(ren, xx*2, rl+1);
+                     drawTallPixel(ren, xx*2, rl+1);
                    }
                 }
 
@@ -1345,27 +1363,59 @@ int main(int argc, char** argv, char** env) {
               break;
            }
 	   if (viceCapture) {
-              if (top->V_XPOS == firstXPos && top->V_RASTER_LINE == 2) {
-               viceCapture1stLineCount++;
-               // Each pixel has 8 ticks, so 2nd time we come here this
-               // count will be 16 and we should stop.
-               if (viceCapture1stLineCount == 16) {
-                  state->flags |= VICII_OP_CAPTURE_ABORT;
-                  ipc_receive_done(ipc);
+              if (viceCaptureCycleCount > 0) {
+                  viceCaptureCycleCount--;
+                  if (viceCaptureCycleCount == 0) {
+                    for (int q = 0; q< 8; q++) {
+                       ipc_receive_done(ipc);
+                       ipc_receive(ipc);
+                    }
 
-                  SDL_Surface *sshot = SDL_CreateRGBSurface(0, screenWidth*2, screenHeight*2,
-                   32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000);
-                  SDL_RenderReadPixels(ren, NULL, SDL_PIXELFORMAT_ARGB8888,
+                    // This is now a full frame capture synced with VICE
+                    SDL_RenderPresent(ren);
+                    state->flags |= VICII_OP_CAPTURE_ABORT;
+                    ipc_receive_done(ipc);
+
+                    SDL_Surface *sshot = SDL_CreateRGBSurface(0, screenWidth*2, screenHeight*2,
+                     32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000);
+                    SDL_RenderReadPixels(ren, NULL, SDL_PIXELFORMAT_ARGB8888,
                                     sshot->pixels, sshot->pitch);
-                  SDL_SaveBMP(sshot, "screenshot.bmp");
-                  SDL_FreeSurface(sshot);
-                  exit(0);
-	        }
+                    SDL_SaveBMP(sshot, "screenshot.bmp");
+                    SDL_FreeSurface(sshot);
+                    exit(0);
+	         }
               }
 	   }
 
            ticksUntilDone--;
            ticksUntilPhase--;
+
+           if (ticksUntilRenderFix > 0) {
+              ticksUntilRenderFix--;
+              if (ticksUntilRenderFix == 0) {
+                 // We had to start late on the first raster line due to the initial
+                 // conditions of our VICII logic.  So fill in the missing pixels
+                 // of the sync line from 0 -> NUM_SKIPPED_PIXELS_AFTER_SYNC from the
+                 // state->dbuf that came from VICE.
+
+                 int r = state->dbuf_offset - NUM_SKIPPED_PIXELS_AFTER_SYNC;
+                 if (r < 0) r += numCycles * 8;
+
+                 int rl = top->V_RASTER_LINE;
+                 rl = adjustRasterLine(chip, rl);
+
+                 for (int q=0;q<NUM_SKIPPED_PIXELS_AFTER_SYNC; q++) {
+                   SDL_SetRenderDrawColor(ren,
+                     (native_rgb[state->dbuf[r]*3] << 2) | 0b11,
+                     (native_rgb[state->dbuf[r]*3+1] << 2) | 0b11,
+                     (native_rgb[state->dbuf[r]*3+2] << 2) | 0b11,
+                     255);
+                   drawSimulatedPixel(ren, q*2, rl);
+                   drawSimulatedPixel(ren, q*2+1, rl);
+                   r=r+1; if (r >= numCycles*8) r = 0;
+                 }
+              }
+           }
 
            if (ticksUntilDone == 0 || needQuit) {
               // Do not change state after this line
