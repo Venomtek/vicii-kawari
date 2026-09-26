@@ -89,9 +89,13 @@ def compare_pair(
     assert best is not None
     return best
 
+def removeprefix(s, prefix):
+    if s.startswith(prefix):
+        return s[len(prefix):]
+    return s
 
 def counterpart(path: Path, old_prefix: str, new_prefix: str) -> Path:
-    return path.with_name(new_prefix + path.name.removeprefix(old_prefix))
+    return path.with_name(new_prefix + removeprefix(path.name, old_prefix))
 
 
 def parse_args() -> argparse.Namespace:
@@ -156,7 +160,7 @@ def main() -> int:
             errors += 1
             continue
 
-        filename = relative_fpga.name.removeprefix(FPGA_PREFIX)
+        filename = removeprefix(relative_fpga.name,FPGA_PREFIX)
         color = GREEN if likeness == 100.0 else RED
         print(f"{filename} {color}{likeness:.6f}%{RESET}")
 

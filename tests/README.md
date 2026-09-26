@@ -1,6 +1,7 @@
 Prerequisites
 
     sudo apt-get install imagemagick python3-pil
+    python3 -m pip install Pillow
 
 To compare all matching FPGA and VICE PRG screenshots recursively (allowing up to four pixels of horizontal and vertical displacement):
 
